@@ -49,19 +49,14 @@ const config: HardhatUserConfig = {
         ],
     },
     networks: {
-        sepolia: {
-            eid: EndpointId.SEPOLIA_V2_TESTNET,
-            url: process.env.RPC_URL_SEPOLIA || 'https://rpc.sepolia.org/',
+        basesep: {
+            eid: EndpointId.BASESEP_V2_TESTNET,
+            url: 'https://base-sepolia.blockpi.network/v1/rpc/public',
             accounts,
         },
-        fuji: {
-            eid: EndpointId.AVALANCHE_V2_TESTNET,
-            url: process.env.RPC_URL_FUJI || 'https://rpc.ankr.com/avalanche_fuji',
-            accounts,
-        },
-        amoy: {
-            eid: EndpointId.AMOY_V2_TESTNET,
-            url: process.env.RPC_URL_AMOY || 'https://polygon-amoy-bor-rpc.publicnode.com',
+        arbitrumsep: {
+            eid: EndpointId.ARBSEP_V2_TESTNET,
+            url: 'https://public.stackup.sh/api/v1/node/arbitrum-sepolia',
             accounts,
         },
     },
