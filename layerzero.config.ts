@@ -1,10 +1,20 @@
 import { EndpointId } from '@layerzerolabs/lz-definitions'
 
-import type { OAppOmniGraphHardhat, OmniPointHardhat } from '@layerzerolabs/toolbox-hardhat'
+import type {
+    OAppEdgeConfig,
+    OAppOmniGraphHardhat,
+    OmniEdgeHardhat,
+    OmniPointHardhat,
+} from '@layerzerolabs/toolbox-hardhat'
 
 ///////// Testnet contracts
-const baseSepoliaContract: OmniPointHardhat = {
-    eid: EndpointId.BASESEP_V2_TESTNET,
+// const baseSepoliaContract: OmniPointHardhat = {
+//     eid: EndpointId.BASESEP_V2_TESTNET,
+//     contractName: 'MyOApp',
+// }
+
+const mantleSepoliaContract: OmniPointHardhat = {
+    eid: EndpointId.MANTLESEP_V2_TESTNET,
     contractName: 'MyOApp',
 }
 
@@ -27,17 +37,17 @@ const testnetContracts = [
         contract: arbitrumSepoliaContract,
     },
     {
-        contract: baseSepoliaContract,
+        contract: mantleSepoliaContract,
     },
     // {
     //     contract: opbnbTestnetSepoliaContract,
     // },
 ]
 
-const testnetConnections = [
+const testnetConnections: OmniEdgeHardhat<OAppEdgeConfig | undefined>[] = [
     {
         from: arbitrumSepoliaContract,
-        to: baseSepoliaContract,
+        to: mantleSepoliaContract,
         // config: {
         //     sendConfig: {
         //         executorConfig: {
@@ -72,12 +82,18 @@ const testnetConnections = [
     //     to: opbnbTestnetSepoliaContract,
     // },
     {
-        from: baseSepoliaContract,
+        from: mantleSepoliaContract,
         to: arbitrumSepoliaContract,
     },
     // {
-    //     from: baseSepoliaContract,
+    //     from: mantleSepoliaContract,
     //     to: opbnbTestnetSepoliaContract,
+    //     config: {
+    //         receiveLibraryConfig: {
+    //             receiveLibrary: '0x12523de19dc41c91F7d2093E0CFbB76b17012C8d',
+    //             gracePeriod: BigInt(0),
+    //         },
+    //     },
     // },
     // {
     //     from: opbnbTestnetSepoliaContract,
@@ -85,7 +101,7 @@ const testnetConnections = [
     // },
     // {
     //     from: opbnbTestnetSepoliaContract,
-    //     to: baseSepoliaContract,
+    //     to: mantleSepoliaContract,
     // },
 ]
 

@@ -10,7 +10,7 @@ import 'hardhat-contract-sizer'
 import '@nomiclabs/hardhat-ethers'
 import '@layerzerolabs/toolbox-hardhat'
 import { HardhatUserConfig, HttpNetworkAccountsUserConfig } from 'hardhat/types'
-
+import * as chains from 'viem/chains'
 import { EndpointId } from '@layerzerolabs/lz-definitions'
 
 // Set your preferred authentication method
@@ -49,14 +49,24 @@ const config: HardhatUserConfig = {
         ],
     },
     networks: {
-        basesep: {
-            eid: EndpointId.BASESEP_V2_TESTNET,
-            url: 'https://base-sepolia.blockpi.network/v1/rpc/public',
-            accounts,
-        },
+        // basesep: {
+        //     eid: EndpointId.BASESEP_V2_TESTNET,
+        //     url: 'https://base-sepolia.blockpi.network/v1/rpc/public',
+        //     accounts,
+        // },
         arbitrumsep: {
             eid: EndpointId.ARBSEP_V2_TESTNET,
             url: 'https://public.stackup.sh/api/v1/node/arbitrum-sepolia',
+            accounts,
+        },
+        // opbnbTestnet: {
+        //     eid: EndpointId.OPBNB_V2_TESTNET,
+        //     url: chains.opBNBTestnet.rpcUrls.default.http[0],
+        //     accounts,
+        // },
+        mantleTestnet: {
+            eid: EndpointId.MANTLESEP_V2_TESTNET,
+            url: chains.mantleSepoliaTestnet.rpcUrls.default.http[0],
             accounts,
         },
     },

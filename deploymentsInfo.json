@@ -1,18 +1,11 @@
 {
-  "31337": [
+  "5003": [
     {
-      "name": "hardhat",
-      "chainId": "31337",
-      "contracts": {}
-    }
-  ],
-  "84532": [
-    {
-      "name": "basesep",
-      "chainId": "84532",
+      "name": "mantleTestnet",
+      "chainId": "5003",
       "contracts": {
         "MyOApp": {
-          "address": "0xC7946d41d5c9C8Ea9e8a4EB47419c28066bBe84C",
+          "address": "0xf411c2b5439309b67df6F12f51A5328695161119",
           "abi": [
             {
               "inputs": [
@@ -584,13 +577,20 @@
       }
     }
   ],
+  "31337": [
+    {
+      "name": "hardhat",
+      "chainId": "31337",
+      "contracts": {}
+    }
+  ],
   "421614": [
     {
       "name": "arbitrumsep",
       "chainId": "421614",
       "contracts": {
         "MyOApp": {
-          "address": "0xf411c2b5439309b67df6F12f51A5328695161119",
+          "address": "0xd31d70F4d59c73d26D531c8fFdCad5529949bA1a",
           "abi": [
             {
               "inputs": [

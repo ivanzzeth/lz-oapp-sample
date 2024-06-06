@@ -584,12 +584,22 @@ const MyOAppABI = [
 
 function endpointToChainInfo(eid: number) {
     switch (eid) {
-        case EndpointId.BASESEP_V2_TESTNET: // base sepolia
+        // testnets
+        case EndpointId.BASESEP_V2_TESTNET:
             return chains.baseSepolia
         case EndpointId.ARBSEP_V2_TESTNET:
             return chains.arbitrumSepolia
         case EndpointId.OPBNB_V2_TESTNET:
             return chains.opBNBTestnet
+        case EndpointId.MANTLESEP_V2_TESTNET:
+            return chains.mantleSepoliaTestnet
+        // mainnets
+        case EndpointId.OPBNB_V2_MAINNET:
+            return chains.opBNB
+        case EndpointId.MANTLE_V2_MAINNET:
+            return chains.mantle
+        case EndpointId.ARBITRUM_MAINNET:
+            return chains.arbitrum
         default:
             return chains.mainnet
     }
@@ -597,10 +607,22 @@ function endpointToChainInfo(eid: number) {
 
 function chainIdToEndpointId(chainId: number) {
     switch (chainId) {
+        // testnets
         case chains.baseSepolia.id:
             return EndpointId.BASESEP_V2_TESTNET
         case chains.arbitrumSepolia.id:
             return EndpointId.ARBSEP_V2_TESTNET
+        case chains.opBNBTestnet.id:
+            return EndpointId.OPBNB_V2_TESTNET
+        case chains.mantleSepoliaTestnet.id:
+            return EndpointId.MANTLESEP_V2_TESTNET
+        // mainnets
+        case chains.opBNB.id:
+            return EndpointId.OPBNB_V2_MAINNET
+        case chains.mantle.id:
+            return EndpointId.MANTLE_V2_MAINNET
+        case chains.arbitrum.id:
+            return EndpointId.ARBITRUM_MAINNET
         default:
             return EndpointId.ETHEREUM_V2_MAINNET
     }
@@ -781,6 +803,10 @@ async function send(
     )
     const sendTx = await source.contract.send(target.eid, message, options, { value: nativeFee.toString() })
     console.log(`send, txhash=${sendTx.hash}`)
+
+    // use this for waiting state sync on layer zero scan
+    await waitForAllMessagesReceived(source.eid, sendTx.hash, 10_000)
+
     const sendTxReceipt = await sendTx.wait()
     const gasFee = sendTxReceipt.gasUsed.mul(ethers.BigNumber.from(sendTxReceipt.effectiveGasPrice))
     const totalFee = ethers.utils.formatEther(ethers.BigNumber.from(nativeFee).add(gasFee))
@@ -788,9 +814,6 @@ async function send(
         `send seccessfully, from=${source.contract.address}, to=${target.contract.address}, totalFee=${totalFee}(ETH) nativeFee=${ethers.utils.formatEther(nativeFee)}(ETH) gasUsed=${sendTxReceipt.gasUsed}`
     )
     const sleep = (delay: number) => new Promise((resolve) => setTimeout(resolve, delay))
-
-    // use this for waiting state sync on layer zero scan
-    await waitForAllMessagesReceived(source.eid, sendTx.hash)
 
     // wait for executing cross chain call
     let data: string | undefined
