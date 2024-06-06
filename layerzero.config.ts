@@ -5,18 +5,18 @@ import type { OAppOmniGraphHardhat, OmniPointHardhat } from '@layerzerolabs/tool
 ///////// Testnet contracts
 const baseSepoliaContract: OmniPointHardhat = {
     eid: EndpointId.BASESEP_V2_TESTNET,
-    contractName: 'MyOFT',
+    contractName: 'MyOApp',
 }
 
 const arbitrumSepoliaContract: OmniPointHardhat = {
     eid: EndpointId.ARBSEP_V2_TESTNET,
-    contractName: 'MyOFT',
+    contractName: 'MyOApp',
 }
 
-const opbnbTestnetSepoliaContract: OmniPointHardhat = {
-    eid: EndpointId.ARBSEP_V2_TESTNET,
-    contractName: 'MyOFT',
-}
+// const opbnbTestnetSepoliaContract: OmniPointHardhat = {
+//     eid: EndpointId.OPBNB_V2_TESTNET,
+//     contractName: 'MyOApp',
+// }
 
 ///////// Mainnet contracts
 
@@ -29,9 +29,9 @@ const testnetContracts = [
     {
         contract: baseSepoliaContract,
     },
-    {
-        contract: opbnbTestnetSepoliaContract,
-    },
+    // {
+    //     contract: opbnbTestnetSepoliaContract,
+    // },
 ]
 
 const testnetConnections = [
@@ -67,26 +67,26 @@ const testnetConnections = [
         //     },
         // },
     },
-    {
-        from: arbitrumSepoliaContract,
-        to: opbnbTestnetSepoliaContract,
-    },
+    // {
+    //     from: arbitrumSepoliaContract,
+    //     to: opbnbTestnetSepoliaContract,
+    // },
     {
         from: baseSepoliaContract,
         to: arbitrumSepoliaContract,
     },
-    {
-        from: baseSepoliaContract,
-        to: opbnbTestnetSepoliaContract,
-    },
-    {
-        from: opbnbTestnetSepoliaContract,
-        to: arbitrumSepoliaContract,
-    },
-    {
-        from: opbnbTestnetSepoliaContract,
-        to: baseSepoliaContract,
-    },
+    // {
+    //     from: baseSepoliaContract,
+    //     to: opbnbTestnetSepoliaContract,
+    // },
+    // {
+    //     from: opbnbTestnetSepoliaContract,
+    //     to: arbitrumSepoliaContract,
+    // },
+    // {
+    //     from: opbnbTestnetSepoliaContract,
+    //     to: baseSepoliaContract,
+    // },
 ]
 
 const config: OAppOmniGraphHardhat = {

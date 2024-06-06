@@ -8,6 +8,7 @@
     "compile": "$npm_execpath run compile:forge && $npm_execpath run compile:hardhat",
     "compile:forge": "forge build",
     "compile:hardhat": "hardhat compile",
+    "export:deployments": "hardhat export --export-all deploymentsInfo.json",
     "lint": "$npm_execpath run lint:js && $npm_execpath run lint:sol",
     "lint:fix": "eslint --fix '**/*.{js,ts,json}' && prettier --write . && solhint 'contracts/**/*.sol' --fix --noPrompt",
     "lint:js": "eslint '**/*.{js,ts,json}' && prettier --check .",
@@ -71,5 +72,12 @@
     "@nomicfoundation/edr": "0.3.5",
     "ethers": "^5.7.2",
     "hardhat-deploy": "^0.12.1"
+  },
+  "dependencies": {
+    "@layerzerolabs/scan-client": "^0.0.8",
+    "csv": "^6.3.9",
+    "csv-stringify": "^6.5.0",
+    "evm-chains": "^0.2.0",
+    "viem": "^2.13.6"
   }
 }
