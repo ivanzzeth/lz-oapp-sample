@@ -5,7 +5,7 @@ import * as dotenv from 'dotenv'
 dotenv.config()
 // import * as csv from 'csv'
 
-import { Contract, Wallet, ethers } from 'ethers'
+import { BigNumber, Contract, Wallet, ethers } from 'ethers'
 import * as chains from 'viem/chains'
 
 import { EndpointId, endpointIdToChain, isEvmChain } from '@layerzerolabs/lz-definitions'
@@ -628,6 +628,56 @@ function chainIdToEndpointId(chainId: number) {
     }
 }
 
+function getGasPriceRange(chainId: number): BigNumber[] {
+    if (chainId == chains.arbitrum.id || chainId == chains.arbitrumSepolia.id) {
+        return [ethers.utils.parseUnits('0.01', 'gwei'), ethers.utils.parseUnits('0.01', 'gwei')]
+    }
+    if (chainId == chains.opBNB.id || chainId == chains.opBNBTestnet.id) {
+        return [ethers.utils.parseUnits('0.001000008', 'gwei'), ethers.utils.parseUnits('0.001010009', 'gwei')]
+    }
+    if (chainId == chains.mantle.id || chainId == chains.mantleSepoliaTestnet.id) {
+        return [ethers.utils.parseUnits('0.020', 'gwei'), ethers.utils.parseUnits('0.020', 'gwei')]
+    }
+
+    return [ethers.utils.parseUnits('9', 'gwei'), ethers.utils.parseUnits('12', 'gwei')]
+}
+
+function getUsdPrice(chainId: number): number {
+    if (chainId == chains.arbitrum.id || chains.arbitrumSepolia.id) {
+        return 1.0907
+    }
+    if (chainId == chains.opBNB.id || chains.opBNBTestnet.id) {
+        return 706.8
+    }
+
+    if (chainId == chains.mantle.id || chainId == chains.mantleSepoliaTestnet.id) {
+        return 1.02
+    }
+
+    return 3814.04 // ETH
+}
+
+function calculateFees(
+    sendGasUsed: ethers.BigNumberish,
+    nativeFee: ethers.BigNumberish,
+    gasPrice: ethers.BigNumberish
+) {
+    const gasFee = ethers.BigNumber.from(sendGasUsed).mul(ethers.BigNumber.from(gasPrice))
+    const totalFee = ethers.BigNumber.from(nativeFee).add(gasFee)
+    return {
+        nativeFee: ethers.BigNumber.from(nativeFee),
+        gasFee,
+        totalFee,
+    }
+}
+
+function getFeeInUSD(totalFee: ethers.BigNumber, priceInUSD: number) {
+    const res = parseFloat(ethers.utils.formatEther(totalFee)) * priceInUSD
+    console.log(`getFeeInUSD, totalFee: ${totalFee.toString()}, priceInUSD: ${priceInUSD}, res: ${res}`)
+
+    return res
+}
+
 async function main() {
     const mnemonic = process.env.MNEMONIC
 
@@ -644,7 +694,8 @@ async function main() {
     Object.values(Object.assign({}, deploymentsJSON)).forEach((infos) =>
         infos.forEach((info: { chainId: string; name: string; contracts: Record<string, any> }) => {
             // console.log('info:', info)
-            if (info.chainId == '31337') { // hardhat
+            if (info.chainId == '31337') {
+                // hardhat
                 return
             }
             Object.entries(info.contracts).forEach(([contractName, contract]) => {
@@ -720,8 +771,13 @@ async function main() {
         toEid: number
         gasFee: string
         nativeFee: string
-        sendTxgasUsed: ethers.BigNumber
+        sendTxGasUsed: ethers.BigNumber
         totalFee: string
+        minTotalFee: string
+        maxTotalFee: string
+        currGasPrice: string
+        minGasPrice: string
+        maxGasPrice: string
         startTime: number
         startTimeStr: string
         endTime: number
@@ -755,6 +811,11 @@ async function main() {
             'total fee in ETH',
             'native fee in ETH',
             'gas fee in ETH',
+            'curr gas price',
+            'min total fee in ETH',
+            'min gas price',
+            'max total fee in ETH',
+            'max gas price',
             'source chain gas used',
             'start time',
             'end time',
@@ -772,7 +833,12 @@ async function main() {
             v.totalFee,
             v.nativeFee,
             v.gasFee,
-            v.sendTxgasUsed.toString(),
+            v.currGasPrice,
+            v.minTotalFee,
+            v.minGasPrice,
+            v.maxTotalFee,
+            v.maxGasPrice,
+            v.sendTxGasUsed.toString(),
             v.startTimeStr,
             v.endTimeStr,
             v.elapsedTimeInSeconds,
@@ -808,8 +874,29 @@ async function send(
     await waitForAllMessagesReceived(source.eid, sendTx.hash, 10_000)
 
     const sendTxReceipt = await sendTx.wait()
-    const gasFee = sendTxReceipt.gasUsed.mul(ethers.BigNumber.from(sendTxReceipt.effectiveGasPrice))
-    const totalFee = ethers.utils.formatEther(ethers.BigNumber.from(nativeFee).add(gasFee))
+
+    const priceInUSD = getUsdPrice(source.chainId)
+    const currGasPrice = ethers.BigNumber.from(sendTxReceipt.effectiveGasPrice)
+    // const gasFee = sendTxReceipt.gasUsed.mul(ethers.BigNumber.from(sendTxReceipt.effectiveGasPrice))
+    // const totalFee = ethers.utils.formatEther(ethers.BigNumber.from(nativeFee).add(gasFee))
+    const { gasFee, totalFee } = calculateFees(sendTxReceipt.gasUsed, ethers.BigNumber.from(nativeFee), currGasPrice)
+    const totalFeeInUSD = getFeeInUSD(totalFee, priceInUSD)
+
+    const [minGasPrice, maxGasPrice] = getGasPriceRange(source.chainId)
+    const { totalFee: minTotalFee } = calculateFees(
+        sendTxReceipt.gasUsed,
+        ethers.BigNumber.from(nativeFee),
+        minGasPrice
+    )
+    const minTotalFeeInUSD = getFeeInUSD(minTotalFee, priceInUSD)
+
+    const { totalFee: maxTotalFee } = calculateFees(
+        sendTxReceipt.gasUsed,
+        ethers.BigNumber.from(nativeFee),
+        maxGasPrice
+    )
+    const maxTotalFeeInUSD = getFeeInUSD(maxTotalFee, priceInUSD)
+
     console.log(
         `send seccessfully, from=${source.contract.address}, to=${target.contract.address}, totalFee=${totalFee}(ETH) nativeFee=${ethers.utils.formatEther(nativeFee)}(ETH) gasUsed=${sendTxReceipt.gasUsed}`
     )
@@ -844,10 +931,15 @@ async function send(
         fromEid: source.eid,
         to: `${target.contractName}(${target.eid}:${target.contract.address})`,
         toEid: target.eid,
-        totalFee, // in ether
+        totalFee: `${ethers.utils.formatEther(totalFee)}(${totalFeeInUSD}$)`, // in ether
         nativeFee: ethers.utils.formatEther(nativeFee), // in ether
         gasFee: ethers.utils.formatEther(gasFee), // in ether
-        sendTxgasUsed: sendTxReceipt.gasUsed as ethers.BigNumber,
+        minTotalFee: `${ethers.utils.formatEther(minTotalFee)}(${minTotalFeeInUSD})$`,
+        maxTotalFee: `${ethers.utils.formatEther(maxTotalFee)}(${maxTotalFeeInUSD})$`,
+        currGasPrice: currGasPrice.toString(),
+        minGasPrice: minGasPrice.toString(),
+        maxGasPrice: maxGasPrice.toString(),
+        sendTxGasUsed: sendTxReceipt.gasUsed as ethers.BigNumber,
         startTime: beforeSendTime,
         startTimeStr: new Date(beforeSendTime).toISOString(),
         endTime: afterSendTime,
