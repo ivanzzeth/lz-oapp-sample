@@ -10,7 +10,7 @@ import * as chains from 'viem/chains'
 
 import { EndpointId, endpointIdToChain, isEvmChain } from '@layerzerolabs/lz-definitions'
 import { Options } from '@layerzerolabs/lz-v2-utilities'
-import { Message, getMessagesBySrcTxHash, waitForAllMessagesReceived } from '@layerzerolabs/scan-client'
+import { Message, MessageStatus, getMessagesBySrcTxHash } from '@layerzerolabs/scan-client'
 
 import deploymentsJSON from '../deploymentsInfo.json'
 
@@ -585,6 +585,8 @@ const MyOAppABI = [
 function endpointToChainInfo(eid: number) {
     switch (eid) {
         // testnets
+        case EndpointId.SEPOLIA_V2_TESTNET:
+            return chains.sepolia
         case EndpointId.BASESEP_V2_TESTNET:
             return chains.baseSepolia
         case EndpointId.ARBSEP_V2_TESTNET:
@@ -608,6 +610,8 @@ function endpointToChainInfo(eid: number) {
 function chainIdToEndpointId(chainId: number) {
     switch (chainId) {
         // testnets
+        case chains.sepolia.id:
+            return EndpointId.SEPOLIA_V2_TESTNET
         case chains.baseSepolia.id:
             return EndpointId.BASESEP_V2_TESTNET
         case chains.arbitrumSepolia.id:
@@ -630,29 +634,38 @@ function chainIdToEndpointId(chainId: number) {
 
 function getGasPriceRange(chainId: number): BigNumber[] {
     if (chainId == chains.arbitrum.id || chainId == chains.arbitrumSepolia.id) {
-        return [ethers.utils.parseUnits('0.01', 'gwei'), ethers.utils.parseUnits('0.01', 'gwei')]
+        return [ethers.utils.parseUnits('0.01', 'gwei'), ethers.utils.parseUnits('4.03', 'gwei')]
     }
     if (chainId == chains.opBNB.id || chainId == chains.opBNBTestnet.id) {
-        return [ethers.utils.parseUnits('0.001000008', 'gwei'), ethers.utils.parseUnits('0.001010009', 'gwei')]
+        return [ethers.utils.parseUnits('0.001000008', 'gwei'), ethers.utils.parseUnits('3', 'gwei')]
     }
     if (chainId == chains.mantle.id || chainId == chains.mantleSepoliaTestnet.id) {
-        return [ethers.utils.parseUnits('0.020', 'gwei'), ethers.utils.parseUnits('0.020', 'gwei')]
+        return [ethers.utils.parseUnits('0.020', 'gwei'), ethers.utils.parseUnits('3', 'gwei')]
     }
 
+    // Ethereum
     return [ethers.utils.parseUnits('9', 'gwei'), ethers.utils.parseUnits('12', 'gwei')]
 }
 
 function getUsdPrice(chainId: number): number {
-    if (chainId == chains.arbitrum.id || chains.arbitrumSepolia.id) {
-        return 1.0907
-    }
-    if (chainId == chains.opBNB.id || chains.opBNBTestnet.id) {
-        return 706.8
+    console.log('getUsdPrice, chainId: ', chainId)
+    if (
+        chainId == chains.opBNB.id ||
+        chainId == chains.opBNBTestnet.id ||
+        chainId == chains.bsc.id ||
+        chainId == chains.bscTestnet.id
+    ) {
+        return 706.8 // Native token is BNB.
     }
 
     if (chainId == chains.mantle.id || chainId == chains.mantleSepoliaTestnet.id) {
-        return 1.02
+        return 1.02 // Native token is MNT.
     }
+
+    // the native token is ETH not ARB, so we dont need to configure it.
+    // if (chainId == chains.arbitrum.id || chainId == chains.arbitrumSepolia.id) {
+    //     return 1.0907
+    // }
 
     return 3814.04 // ETH
 }
@@ -698,6 +711,9 @@ async function main() {
                 // hardhat
                 return
             }
+            if (info.chainId == chains.mantle.id.toString()) {
+                return // skip for now
+            }
             Object.entries(info.contracts).forEach(([contractName, contract]) => {
                 const chainId = parseInt(info.chainId, 10)
                 contractInfos.push({
@@ -734,7 +750,7 @@ async function main() {
             // this chainId is endpointId, so confused
             // const chainId = getChainIdForNetwork(networkToChain(network), networkToStage(network), '')
             const chainInfo = endpointToChainInfo(info.eid)
-            console.log(`chainId: ${chainInfo.id}`)
+            console.log(`${chainInfo.name} chainId: ${chainInfo.id}`)
             // Object.keys(chains).map((name) => chains[name])
             let rpcs = await Promise.all(
                 chainInfo.rpcUrls.default.http.map(async (rpc) => {
@@ -792,8 +808,16 @@ async function main() {
             if (i == j) continue
             const sourceContract = contracts.at(i)!
             const targetContract = contracts.at(j)!
-            const sendResult = await send(sourceContract, targetContract)
-            res.push(sendResult)
+            try {
+                const sendResult = await send(sourceContract, targetContract)
+                if (sendResult) {
+                    res.push(sendResult)
+                }
+            } catch (e: unknown) {
+                console.log(
+                    `Failed to send from ${sourceContract.eid}:${sourceContract.contractName} to ${targetContract.eid}:${targetContract.contractName}, error: ${e}`
+                )
+            }
         }
     }
 
@@ -809,12 +833,12 @@ async function main() {
             'source contract',
             'target contract',
             'total fee in ETH',
+            'min total fee in ETH',
+            'max total fee in ETH',
             'native fee in ETH',
             'gas fee in ETH',
             'curr gas price',
-            'min total fee in ETH',
             'min gas price',
-            'max total fee in ETH',
             'max gas price',
             'source chain gas used',
             'start time',
@@ -831,12 +855,12 @@ async function main() {
             v.from,
             v.to,
             v.totalFee,
+            v.minTotalFee,
+            v.maxTotalFee,
             v.nativeFee,
             v.gasFee,
             v.currGasPrice,
-            v.minTotalFee,
             v.minGasPrice,
-            v.maxTotalFee,
             v.maxGasPrice,
             v.sendTxGasUsed.toString(),
             v.startTimeStr,
@@ -855,7 +879,7 @@ async function main() {
 async function send(
     source: { contractName: string; contract: Contract; eid: number; chainId: number },
     target: { contractName: string; contract: Contract; eid: number; chainId: number },
-    hardcodeGas = 5000
+    hardcodeGas = 8000
 ) {
     const beforeSendTime = Date.now()
     const options = Options.newOptions().addExecutorLzReceiveOption(hardcodeGas, 0).toHex().toString()
@@ -871,8 +895,14 @@ async function send(
     console.log(`send, txhash=${sendTx.hash}`)
 
     // use this for waiting state sync on layer zero scan
-    await waitForAllMessagesReceived(source.eid, sendTx.hash, 10_000)
+    // TODO: Always block if the tx was marked as FAILED.
+    // await waitForAllMessagesReceived(source.eid, sendTx.hash, 10_000)
 
+    const { status: msgStatus } = await myWaitForAllMessagesReceived(source.eid, sendTx.hash, 10_000)
+    if (msgStatus == MessageStatus.FAILED) {
+        console.log(`Failed to send cross chain msg for unknown reason`)
+        return null
+    }
     const sendTxReceipt = await sendTx.wait()
 
     const priceInUSD = getUsdPrice(source.chainId)
@@ -900,7 +930,6 @@ async function send(
     console.log(
         `send seccessfully, from=${source.contract.address}, to=${target.contract.address}, totalFee=${totalFee}(ETH) nativeFee=${ethers.utils.formatEther(nativeFee)}(ETH) gasUsed=${sendTxReceipt.gasUsed}`
     )
-    const sleep = (delay: number) => new Promise((resolve) => setTimeout(resolve, delay))
 
     // wait for executing cross chain call
     let data: string | undefined
@@ -948,6 +977,47 @@ async function send(
         elapsedTimeInSeconds: elapsedTime / 1000,
         messages: messages,
         messagesJSON: JSON.stringify(messages),
+    }
+}
+
+async function sleep(delay: number) {
+    new Promise((resolve) => setTimeout(resolve, delay))
+}
+
+async function myWaitForAllMessagesReceived(
+    srcChainId: number,
+    srcTxHash: string,
+    pollInterval?: number
+): Promise<{ messages: Message[]; status: MessageStatus }> {
+    let status: MessageStatus = MessageStatus.INFLIGHT
+    let messages: Message[]
+    LOOPS: while (true) {
+        try {
+            const resp = await getMessagesBySrcTxHash(srcChainId, srcTxHash)
+            messages = resp.messages
+            let deliveredCount = 0
+            for (const msg of messages) {
+                if (msg.status == MessageStatus.FAILED) {
+                    status = MessageStatus.FAILED
+                    break LOOPS
+                }
+                if (msg.status == MessageStatus.DELIVERED) {
+                    deliveredCount++
+                }
+            }
+            if (deliveredCount == messages.length) {
+                status = MessageStatus.DELIVERED
+                break LOOPS
+            }
+            // eslint-disable-next-line no-empty
+        } catch {}
+
+        await sleep(pollInterval ?? 5000)
+    }
+
+    return {
+        messages,
+        status,
     }
 }
 

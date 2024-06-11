@@ -49,24 +49,43 @@ const config: HardhatUserConfig = {
         ],
     },
     networks: {
-        // basesep: {
-        //     eid: EndpointId.BASESEP_V2_TESTNET,
-        //     url: 'https://base-sepolia.blockpi.network/v1/rpc/public',
+        /// Testnet
+        // arbitrumSep: {
+        //     eid: EndpointId.ARBSEP_V2_TESTNET,
+        //     url: 'https://public.stackup.sh/api/v1/node/arbitrum-sepolia',
         //     accounts,
         // },
-        arbitrumsep: {
-            eid: EndpointId.ARBSEP_V2_TESTNET,
-            url: 'https://public.stackup.sh/api/v1/node/arbitrum-sepolia',
-            accounts,
-        },
+        // baseSep: {
+        //     eid: EndpointId.BASESEP_V2_TESTNET,
+        //     url: chains.baseSepolia.rpcUrls.default.http[0],
+        //     accounts,
+        // },
+        // mantleTestnet: {
+        //     eid: EndpointId.MANTLESEP_V2_TESTNET,
+        //     url: chains.mantleSepoliaTestnet.rpcUrls.default.http[0],
+        //     accounts,
+        // },
+        // // Got error : OPBNB_V2_TESTNET] is not in the graph
         // opbnbTestnet: {
         //     eid: EndpointId.OPBNB_V2_TESTNET,
         //     url: chains.opBNBTestnet.rpcUrls.default.http[0],
         //     accounts,
         // },
-        mantleTestnet: {
-            eid: EndpointId.MANTLESEP_V2_TESTNET,
-            url: chains.mantleSepoliaTestnet.rpcUrls.default.http[0],
+
+        /// Mainnet
+        arbitrum: {
+            eid: EndpointId.ARBITRUM_V2_MAINNET,
+            url: chains.arbitrum.rpcUrls.default.http[0],
+            accounts,
+        },
+        opbnb: {
+            eid: EndpointId.OPBNB_V2_MAINNET,
+            url: chains.opBNB.rpcUrls.default.http[0],
+            accounts,
+        },
+        mantle: {
+            eid: EndpointId.MANTLE_V2_MAINNET,
+            url: chains.mantle.rpcUrls.default.http[0],
             accounts,
         },
     },
