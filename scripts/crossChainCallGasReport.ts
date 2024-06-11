@@ -711,9 +711,6 @@ async function main() {
                 // hardhat
                 return
             }
-            if (info.chainId == chains.mantle.id.toString()) {
-                return // skip for now
-            }
             Object.entries(info.contracts).forEach(([contractName, contract]) => {
                 const chainId = parseInt(info.chainId, 10)
                 contractInfos.push({
@@ -881,6 +878,10 @@ async function send(
     target: { contractName: string; contract: Contract; eid: number; chainId: number },
     hardcodeGas = 8000
 ) {
+    // if (source.chainId == chains.opBNB.id) {
+    //     return null
+    // }
+
     const beforeSendTime = Date.now()
     const options = Options.newOptions().addExecutorLzReceiveOption(hardcodeGas, 0).toHex().toString()
     let nativeFee = 0
@@ -888,14 +889,19 @@ async function send(
     const message = `ping ${target.contract.address} from ${source.contract.address} with nonce ${randNum}`
     ;[nativeFee] = await source.contract.quote(target.eid, message, options, false)
 
+    const gasPrice = await source.contract.provider.getGasPrice()
+
     console.log(
-        `send, from=${source.eid}:${source.contract.address}, to=${target.eid}:${target.contract.address}, nativeFee=${nativeFee}`
+        `send, from=${source.eid}:${source.contract.address}, to=${target.eid}:${target.contract.address}, nativeFee=${nativeFee}, gasPrice=${ethers.utils.formatUnits(gasPrice, 'gwei')}(gwei)`
     )
-    const sendTx = await source.contract.send(target.eid, message, options, { value: nativeFee.toString() })
+    const sendTx = await source.contract.send(target.eid, message, options, {
+        value: nativeFee.toString(),
+        gasPrice: gasPrice.toHexString(),
+    })
     console.log(`send, txhash=${sendTx.hash}`)
 
     // use this for waiting state sync on layer zero scan
-    // TODO: Always block if the tx was marked as FAILED.
+    // Always block if the tx was marked as FAILED.
     // await waitForAllMessagesReceived(source.eid, sendTx.hash, 10_000)
 
     const { status: msgStatus } = await myWaitForAllMessagesReceived(source.eid, sendTx.hash, 10_000)
@@ -965,9 +971,9 @@ async function send(
         gasFee: ethers.utils.formatEther(gasFee), // in ether
         minTotalFee: `${ethers.utils.formatEther(minTotalFee)}(${minTotalFeeInUSD})$`,
         maxTotalFee: `${ethers.utils.formatEther(maxTotalFee)}(${maxTotalFeeInUSD})$`,
-        currGasPrice: currGasPrice.toString(),
-        minGasPrice: minGasPrice.toString(),
-        maxGasPrice: maxGasPrice.toString(),
+        currGasPrice: `${ethers.utils.formatUnits(currGasPrice, 'gwei')}(gwei)`,
+        minGasPrice: `${ethers.utils.formatUnits(minGasPrice, 'gwei')}(gwei)`,
+        maxGasPrice: `${ethers.utils.formatUnits(maxGasPrice, 'gwei')}(gwei)`,
         sendTxGasUsed: sendTxReceipt.gasUsed as ethers.BigNumber,
         startTime: beforeSendTime,
         startTimeStr: new Date(beforeSendTime).toISOString(),
