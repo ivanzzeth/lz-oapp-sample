@@ -878,9 +878,20 @@ async function send(
     target: { contractName: string; contract: Contract; eid: number; chainId: number },
     hardcodeGas = 8000
 ) {
-    // if (source.chainId == chains.opBNB.id) {
-    //     return null
-    // }
+    if (source.chainId == chains.opBNB.id) {
+        return null
+    }
+    if (target.chainId != chains.arbitrum.id) {
+        return null
+    }
+
+    const bytes32Peer = await source.contract.peers(target.eid)
+    if (BigNumber.from(bytes32Peer).eq(BigNumber.from(0))) {
+        // Peer not set, so set peer first
+        const peerToSet = ethers.utils.hexlify(ethers.utils.zeroPad(target.contract.address, 32))
+        const setPeerTx = await source.contract.setPeer(target.eid, peerToSet)
+        await setPeerTx.wait()
+    }
 
     const beforeSendTime = Date.now()
     const options = Options.newOptions().addExecutorLzReceiveOption(hardcodeGas, 0).toHex().toString()

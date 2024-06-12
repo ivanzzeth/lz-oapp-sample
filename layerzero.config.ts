@@ -145,6 +145,11 @@ const mainnetConnections: OmniEdgeHardhat<OAppEdgeConfig | undefined>[] = [
         from: mantleContract,
         to: arbitrumContract,
         config: {
+            sendLibrary: '0xde19274c009A22921E3966a1Ec868cEba40A5DaC',
+            receiveLibraryConfig: {
+                receiveLibrary: '0x8da6512De9379fBF4F09BF520Caf7a85435ed93e',
+                gracePeriod: BigInt(0),
+            },
             sendConfig: {
                 ulnConfig: {
                     requiredDVNs: [
@@ -187,6 +192,11 @@ const mainnetConnections: OmniEdgeHardhat<OAppEdgeConfig | undefined>[] = [
         from: opbnbContract,
         to: arbitrumContract,
         config: {
+            sendLibrary: '0x44289609cc6781fa2C665796b6c5AAbf9FFceDC5',
+            receiveLibraryConfig: {
+                receiveLibrary: '0x9c9e25F9fC4e8134313C2a9f5c719f5c9F4fbD95',
+                gracePeriod: BigInt(0),
+            },
             sendConfig: {
                 ulnConfig: {
                     requiredDVNs: [
