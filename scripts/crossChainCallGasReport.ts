@@ -1,695 +1,27 @@
 import fs from 'node:fs/promises'
+import 'dotenv/config'
 
 import { stringify } from 'csv-stringify/sync'
-import * as dotenv from 'dotenv'
-dotenv.config()
 // import * as csv from 'csv'
 
 import { BigNumber, Contract, Wallet, ethers } from 'ethers'
 import * as chains from 'viem/chains'
 
-import { EndpointId, endpointIdToChain, isEvmChain } from '@layerzerolabs/lz-definitions'
+import { endpointIdToChain, isEvmChain } from '@layerzerolabs/lz-definitions'
 import { Options } from '@layerzerolabs/lz-v2-utilities'
 import { Message, MessageStatus, getMessagesBySrcTxHash } from '@layerzerolabs/scan-client'
 
 import deploymentsJSON from '../deploymentsInfo.json'
 
-const MyOAppABI = [
-    {
-        inputs: [
-            {
-                internalType: 'address',
-                name: '_endpoint',
-                type: 'address',
-            },
-            {
-                internalType: 'address',
-                name: '_delegate',
-                type: 'address',
-            },
-        ],
-        stateMutability: 'nonpayable',
-        type: 'constructor',
-    },
-    {
-        inputs: [
-            {
-                internalType: 'address',
-                name: 'target',
-                type: 'address',
-            },
-        ],
-        name: 'AddressEmptyCode',
-        type: 'error',
-    },
-    {
-        inputs: [
-            {
-                internalType: 'address',
-                name: 'account',
-                type: 'address',
-            },
-        ],
-        name: 'AddressInsufficientBalance',
-        type: 'error',
-    },
-    {
-        inputs: [],
-        name: 'FailedInnerCall',
-        type: 'error',
-    },
-    {
-        inputs: [],
-        name: 'InvalidDelegate',
-        type: 'error',
-    },
-    {
-        inputs: [],
-        name: 'InvalidEndpointCall',
-        type: 'error',
-    },
-    {
-        inputs: [],
-        name: 'LzTokenUnavailable',
-        type: 'error',
-    },
-    {
-        inputs: [
-            {
-                internalType: 'uint32',
-                name: 'eid',
-                type: 'uint32',
-            },
-        ],
-        name: 'NoPeer',
-        type: 'error',
-    },
-    {
-        inputs: [
-            {
-                internalType: 'uint256',
-                name: 'msgValue',
-                type: 'uint256',
-            },
-        ],
-        name: 'NotEnoughNative',
-        type: 'error',
-    },
-    {
-        inputs: [
-            {
-                internalType: 'address',
-                name: 'addr',
-                type: 'address',
-            },
-        ],
-        name: 'OnlyEndpoint',
-        type: 'error',
-    },
-    {
-        inputs: [
-            {
-                internalType: 'uint32',
-                name: 'eid',
-                type: 'uint32',
-            },
-            {
-                internalType: 'bytes32',
-                name: 'sender',
-                type: 'bytes32',
-            },
-        ],
-        name: 'OnlyPeer',
-        type: 'error',
-    },
-    {
-        inputs: [
-            {
-                internalType: 'address',
-                name: 'owner',
-                type: 'address',
-            },
-        ],
-        name: 'OwnableInvalidOwner',
-        type: 'error',
-    },
-    {
-        inputs: [
-            {
-                internalType: 'address',
-                name: 'account',
-                type: 'address',
-            },
-        ],
-        name: 'OwnableUnauthorizedAccount',
-        type: 'error',
-    },
-    {
-        inputs: [
-            {
-                internalType: 'address',
-                name: 'token',
-                type: 'address',
-            },
-        ],
-        name: 'SafeERC20FailedOperation',
-        type: 'error',
-    },
-    {
-        anonymous: false,
-        inputs: [
-            {
-                indexed: true,
-                internalType: 'address',
-                name: 'previousOwner',
-                type: 'address',
-            },
-            {
-                indexed: true,
-                internalType: 'address',
-                name: 'newOwner',
-                type: 'address',
-            },
-        ],
-        name: 'OwnershipTransferred',
-        type: 'event',
-    },
-    {
-        anonymous: false,
-        inputs: [
-            {
-                indexed: false,
-                internalType: 'uint32',
-                name: 'eid',
-                type: 'uint32',
-            },
-            {
-                indexed: false,
-                internalType: 'bytes32',
-                name: 'peer',
-                type: 'bytes32',
-            },
-        ],
-        name: 'PeerSet',
-        type: 'event',
-    },
-    {
-        inputs: [
-            {
-                components: [
-                    {
-                        internalType: 'uint32',
-                        name: 'srcEid',
-                        type: 'uint32',
-                    },
-                    {
-                        internalType: 'bytes32',
-                        name: 'sender',
-                        type: 'bytes32',
-                    },
-                    {
-                        internalType: 'uint64',
-                        name: 'nonce',
-                        type: 'uint64',
-                    },
-                ],
-                internalType: 'struct Origin',
-                name: 'origin',
-                type: 'tuple',
-            },
-        ],
-        name: 'allowInitializePath',
-        outputs: [
-            {
-                internalType: 'bool',
-                name: '',
-                type: 'bool',
-            },
-        ],
-        stateMutability: 'view',
-        type: 'function',
-    },
-    {
-        inputs: [],
-        name: 'data',
-        outputs: [
-            {
-                internalType: 'string',
-                name: '',
-                type: 'string',
-            },
-        ],
-        stateMutability: 'view',
-        type: 'function',
-    },
-    {
-        inputs: [],
-        name: 'endpoint',
-        outputs: [
-            {
-                internalType: 'contract ILayerZeroEndpointV2',
-                name: '',
-                type: 'address',
-            },
-        ],
-        stateMutability: 'view',
-        type: 'function',
-    },
-    {
-        inputs: [
-            {
-                components: [
-                    {
-                        internalType: 'uint32',
-                        name: 'srcEid',
-                        type: 'uint32',
-                    },
-                    {
-                        internalType: 'bytes32',
-                        name: 'sender',
-                        type: 'bytes32',
-                    },
-                    {
-                        internalType: 'uint64',
-                        name: 'nonce',
-                        type: 'uint64',
-                    },
-                ],
-                internalType: 'struct Origin',
-                name: '',
-                type: 'tuple',
-            },
-            {
-                internalType: 'bytes',
-                name: '',
-                type: 'bytes',
-            },
-            {
-                internalType: 'address',
-                name: '_sender',
-                type: 'address',
-            },
-        ],
-        name: 'isComposeMsgSender',
-        outputs: [
-            {
-                internalType: 'bool',
-                name: '',
-                type: 'bool',
-            },
-        ],
-        stateMutability: 'view',
-        type: 'function',
-    },
-    {
-        inputs: [
-            {
-                components: [
-                    {
-                        internalType: 'uint32',
-                        name: 'srcEid',
-                        type: 'uint32',
-                    },
-                    {
-                        internalType: 'bytes32',
-                        name: 'sender',
-                        type: 'bytes32',
-                    },
-                    {
-                        internalType: 'uint64',
-                        name: 'nonce',
-                        type: 'uint64',
-                    },
-                ],
-                internalType: 'struct Origin',
-                name: '_origin',
-                type: 'tuple',
-            },
-            {
-                internalType: 'bytes32',
-                name: '_guid',
-                type: 'bytes32',
-            },
-            {
-                internalType: 'bytes',
-                name: '_message',
-                type: 'bytes',
-            },
-            {
-                internalType: 'address',
-                name: '_executor',
-                type: 'address',
-            },
-            {
-                internalType: 'bytes',
-                name: '_extraData',
-                type: 'bytes',
-            },
-        ],
-        name: 'lzReceive',
-        outputs: [],
-        stateMutability: 'payable',
-        type: 'function',
-    },
-    {
-        inputs: [
-            {
-                internalType: 'uint32',
-                name: '',
-                type: 'uint32',
-            },
-            {
-                internalType: 'bytes32',
-                name: '',
-                type: 'bytes32',
-            },
-        ],
-        name: 'nextNonce',
-        outputs: [
-            {
-                internalType: 'uint64',
-                name: 'nonce',
-                type: 'uint64',
-            },
-        ],
-        stateMutability: 'view',
-        type: 'function',
-    },
-    {
-        inputs: [],
-        name: 'oAppVersion',
-        outputs: [
-            {
-                internalType: 'uint64',
-                name: 'senderVersion',
-                type: 'uint64',
-            },
-            {
-                internalType: 'uint64',
-                name: 'receiverVersion',
-                type: 'uint64',
-            },
-        ],
-        stateMutability: 'pure',
-        type: 'function',
-    },
-    {
-        inputs: [],
-        name: 'owner',
-        outputs: [
-            {
-                internalType: 'address',
-                name: '',
-                type: 'address',
-            },
-        ],
-        stateMutability: 'view',
-        type: 'function',
-    },
-    {
-        inputs: [
-            {
-                internalType: 'uint32',
-                name: 'eid',
-                type: 'uint32',
-            },
-        ],
-        name: 'peers',
-        outputs: [
-            {
-                internalType: 'bytes32',
-                name: 'peer',
-                type: 'bytes32',
-            },
-        ],
-        stateMutability: 'view',
-        type: 'function',
-    },
-    {
-        inputs: [
-            {
-                internalType: 'uint32',
-                name: '_dstEid',
-                type: 'uint32',
-            },
-            {
-                internalType: 'string',
-                name: '_message',
-                type: 'string',
-            },
-            {
-                internalType: 'bytes',
-                name: '_options',
-                type: 'bytes',
-            },
-            {
-                internalType: 'bool',
-                name: '_payInLzToken',
-                type: 'bool',
-            },
-        ],
-        name: 'quote',
-        outputs: [
-            {
-                components: [
-                    {
-                        internalType: 'uint256',
-                        name: 'nativeFee',
-                        type: 'uint256',
-                    },
-                    {
-                        internalType: 'uint256',
-                        name: 'lzTokenFee',
-                        type: 'uint256',
-                    },
-                ],
-                internalType: 'struct MessagingFee',
-                name: 'fee',
-                type: 'tuple',
-            },
-        ],
-        stateMutability: 'view',
-        type: 'function',
-    },
-    {
-        inputs: [],
-        name: 'renounceOwnership',
-        outputs: [],
-        stateMutability: 'nonpayable',
-        type: 'function',
-    },
-    {
-        inputs: [
-            {
-                internalType: 'uint32',
-                name: '_dstEid',
-                type: 'uint32',
-            },
-            {
-                internalType: 'string',
-                name: '_message',
-                type: 'string',
-            },
-            {
-                internalType: 'bytes',
-                name: '_options',
-                type: 'bytes',
-            },
-        ],
-        name: 'send',
-        outputs: [
-            {
-                components: [
-                    {
-                        internalType: 'bytes32',
-                        name: 'guid',
-                        type: 'bytes32',
-                    },
-                    {
-                        internalType: 'uint64',
-                        name: 'nonce',
-                        type: 'uint64',
-                    },
-                    {
-                        components: [
-                            {
-                                internalType: 'uint256',
-                                name: 'nativeFee',
-                                type: 'uint256',
-                            },
-                            {
-                                internalType: 'uint256',
-                                name: 'lzTokenFee',
-                                type: 'uint256',
-                            },
-                        ],
-                        internalType: 'struct MessagingFee',
-                        name: 'fee',
-                        type: 'tuple',
-                    },
-                ],
-                internalType: 'struct MessagingReceipt',
-                name: 'receipt',
-                type: 'tuple',
-            },
-        ],
-        stateMutability: 'payable',
-        type: 'function',
-    },
-    {
-        inputs: [
-            {
-                internalType: 'address',
-                name: '_delegate',
-                type: 'address',
-            },
-        ],
-        name: 'setDelegate',
-        outputs: [],
-        stateMutability: 'nonpayable',
-        type: 'function',
-    },
-    {
-        inputs: [
-            {
-                internalType: 'uint32',
-                name: '_eid',
-                type: 'uint32',
-            },
-            {
-                internalType: 'bytes32',
-                name: '_peer',
-                type: 'bytes32',
-            },
-        ],
-        name: 'setPeer',
-        outputs: [],
-        stateMutability: 'nonpayable',
-        type: 'function',
-    },
-    {
-        inputs: [
-            {
-                internalType: 'address',
-                name: 'newOwner',
-                type: 'address',
-            },
-        ],
-        name: 'transferOwnership',
-        outputs: [],
-        stateMutability: 'nonpayable',
-        type: 'function',
-    },
-]
-
-function endpointToChainInfo(eid: number) {
-    switch (eid) {
-        // testnets
-        case EndpointId.SEPOLIA_V2_TESTNET:
-            return chains.sepolia
-        case EndpointId.BASESEP_V2_TESTNET:
-            return chains.baseSepolia
-        case EndpointId.ARBSEP_V2_TESTNET:
-            return chains.arbitrumSepolia
-        case EndpointId.OPBNB_V2_TESTNET:
-            return chains.opBNBTestnet
-        case EndpointId.MANTLESEP_V2_TESTNET:
-            return chains.mantleSepoliaTestnet
-        // mainnets
-        case EndpointId.OPBNB_V2_MAINNET:
-            return chains.opBNB
-        case EndpointId.MANTLE_V2_MAINNET:
-            return chains.mantle
-        case EndpointId.ARBITRUM_MAINNET:
-            return chains.arbitrum
-        default:
-            return chains.mainnet
-    }
-}
-
-function chainIdToEndpointId(chainId: number) {
-    switch (chainId) {
-        // testnets
-        case chains.sepolia.id:
-            return EndpointId.SEPOLIA_V2_TESTNET
-        case chains.baseSepolia.id:
-            return EndpointId.BASESEP_V2_TESTNET
-        case chains.arbitrumSepolia.id:
-            return EndpointId.ARBSEP_V2_TESTNET
-        case chains.opBNBTestnet.id:
-            return EndpointId.OPBNB_V2_TESTNET
-        case chains.mantleSepoliaTestnet.id:
-            return EndpointId.MANTLESEP_V2_TESTNET
-        // mainnets
-        case chains.opBNB.id:
-            return EndpointId.OPBNB_V2_MAINNET
-        case chains.mantle.id:
-            return EndpointId.MANTLE_V2_MAINNET
-        case chains.arbitrum.id:
-            return EndpointId.ARBITRUM_MAINNET
-        default:
-            return EndpointId.ETHEREUM_V2_MAINNET
-    }
-}
-
-function getGasPriceRange(chainId: number): BigNumber[] {
-    if (chainId == chains.arbitrum.id || chainId == chains.arbitrumSepolia.id) {
-        return [ethers.utils.parseUnits('0.01', 'gwei'), ethers.utils.parseUnits('4.03', 'gwei')]
-    }
-    if (chainId == chains.opBNB.id || chainId == chains.opBNBTestnet.id) {
-        return [ethers.utils.parseUnits('0.001000008', 'gwei'), ethers.utils.parseUnits('3', 'gwei')]
-    }
-    if (chainId == chains.mantle.id || chainId == chains.mantleSepoliaTestnet.id) {
-        return [ethers.utils.parseUnits('0.020', 'gwei'), ethers.utils.parseUnits('3', 'gwei')]
-    }
-
-    // Ethereum
-    return [ethers.utils.parseUnits('9', 'gwei'), ethers.utils.parseUnits('12', 'gwei')]
-}
-
-function getUsdPrice(chainId: number): number {
-    console.log('getUsdPrice, chainId: ', chainId)
-    if (
-        chainId == chains.opBNB.id ||
-        chainId == chains.opBNBTestnet.id ||
-        chainId == chains.bsc.id ||
-        chainId == chains.bscTestnet.id
-    ) {
-        return 706.8 // Native token is BNB.
-    }
-
-    if (chainId == chains.mantle.id || chainId == chains.mantleSepoliaTestnet.id) {
-        return 1.02 // Native token is MNT.
-    }
-
-    // the native token is ETH not ARB, so we dont need to configure it.
-    // if (chainId == chains.arbitrum.id || chainId == chains.arbitrumSepolia.id) {
-    //     return 1.0907
-    // }
-
-    return 3814.04 // ETH
-}
-
-function calculateFees(
-    sendGasUsed: ethers.BigNumberish,
-    nativeFee: ethers.BigNumberish,
-    gasPrice: ethers.BigNumberish
-) {
-    const gasFee = ethers.BigNumber.from(sendGasUsed).mul(ethers.BigNumber.from(gasPrice))
-    const totalFee = ethers.BigNumber.from(nativeFee).add(gasFee)
-    return {
-        nativeFee: ethers.BigNumber.from(nativeFee),
-        gasFee,
-        totalFee,
-    }
-}
-
-function getFeeInUSD(totalFee: ethers.BigNumber, priceInUSD: number) {
-    const res = parseFloat(ethers.utils.formatEther(totalFee)) * priceInUSD
-    console.log(`getFeeInUSD, totalFee: ${totalFee.toString()}, priceInUSD: ${priceInUSD}, res: ${res}`)
-
-    return res
-}
+import {
+    MyOAppABI,
+    calculateFees,
+    chainIdToEndpointId,
+    endpointToChainInfo,
+    getFeeInUSD,
+    getGasPriceRange,
+    getUsdPrice,
+} from './utils'
 
 async function main() {
     const mnemonic = process.env.MNEMONIC
@@ -705,22 +37,26 @@ async function main() {
 
     const contractInfos: { name: string; address: string; eid: number; chainId: number }[] = []
     Object.values(Object.assign({}, deploymentsJSON)).forEach((infos) =>
-        infos.forEach((info: { chainId: string; name: string; contracts: Record<string, any> }) => {
-            // console.log('info:', info)
-            if (info.chainId == '31337') {
-                // hardhat
-                return
-            }
-            Object.entries(info.contracts).forEach(([contractName, contract]) => {
-                const chainId = parseInt(info.chainId, 10)
-                contractInfos.push({
-                    name: contractName,
-                    address: contract.address,
-                    chainId,
-                    eid: chainIdToEndpointId(chainId),
+        infos.forEach(
+            (info: { chainId: string; name: string; contracts: Record<string, { address: string; abi: [] }> }) => {
+                // console.log('info:', info)
+                if (info.chainId == '31337') {
+                    // hardhat
+                    return
+                }
+                Object.entries(info.contracts).forEach(([contractName, contract]) => {
+                    if (JSON.stringify(contract.abi).includes(`"name":"send"`)) {
+                        const chainId = parseInt(info.chainId, 10)
+                        contractInfos.push({
+                            name: contractName,
+                            address: contract.address,
+                            chainId,
+                            eid: chainIdToEndpointId(chainId),
+                        })
+                    }
                 })
-            })
-        })
+            }
+        )
     )
 
     console.log(`contractInfos: ${JSON.stringify(contractInfos, null, ' ')}`)
@@ -783,11 +119,16 @@ async function main() {
         to: string
         toEid: number
         gasFee: string
+        gasFeeInUSD: string
         nativeFee: string
+        nativeFeeInUSD: string
         sendTxGasUsed: ethers.BigNumber
         totalFee: string
+        totalFeeInUSD: string
         minTotalFee: string
+        minTotalFeeInUSD: string
         maxTotalFee: string
+        maxTotalFeeInUSD: string
         currGasPrice: string
         minGasPrice: string
         maxGasPrice: string
@@ -824,16 +165,21 @@ async function main() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const formatedRes: any[] = [
         [
-            'source hash',
+            'tx hash on source chain',
             'source chain',
             'destination chain',
             'source contract',
             'target contract',
-            'total fee in ETH',
-            'min total fee in ETH',
-            'max total fee in ETH',
-            'native fee in ETH',
-            'gas fee in ETH',
+            'total fee in native token',
+            'total fee in USD',
+            'min total fee in native token',
+            'min total fee in USD',
+            'max total fee in native token',
+            'max total fee in USD',
+            'native fee in native token',
+            'native fee in USD',
+            'gas fee in native token',
+            'gas fee in USD',
             'curr gas price',
             'min gas price',
             'max gas price',
@@ -846,20 +192,25 @@ async function main() {
     ]
     for (const v of res) {
         formatedRes.push([
-            v.sendTxHash,
-            endpointToChainInfo(v.fromEid).name,
-            endpointToChainInfo(v.toEid).name,
-            v.from,
-            v.to,
-            v.totalFee,
-            v.minTotalFee,
-            v.maxTotalFee,
-            v.nativeFee,
-            v.gasFee,
+            v.sendTxHash, // tx hash on source chain
+            endpointToChainInfo(v.fromEid).name, // source chain
+            endpointToChainInfo(v.toEid).name, // destination chain
+            v.from, // source contract
+            v.to, // target contract
+            v.totalFee, // total fee in native token
+            v.totalFeeInUSD, // total fee in USD
+            v.minTotalFee, // min total fee in native token
+            v.minTotalFeeInUSD, // min total fee in USD
+            v.maxTotalFee, // max total fee in native token
+            v.maxTotalFeeInUSD, // max total fee in USD
+            v.nativeFee, // native fee in native token
+            v.nativeFeeInUSD, // native fee in USD
+            v.gasFee, // gas fee in native token
+            v.gasFeeInUSD, // gas fee in USD
             v.currGasPrice,
             v.minGasPrice,
             v.maxGasPrice,
-            v.sendTxGasUsed.toString(),
+            v.sendTxGasUsed.toString(), // source chain gas used
             v.startTimeStr,
             v.endTimeStr,
             v.elapsedTimeInSeconds,
@@ -878,10 +229,13 @@ async function send(
     target: { contractName: string; contract: Contract; eid: number; chainId: number },
     hardcodeGas = 8000
 ) {
-    if (source.chainId == chains.opBNB.id) {
-        return null
-    }
-    if (target.chainId != chains.arbitrum.id) {
+    // if (source.chainId == chains.opBNB.id) {
+    //     return null
+    // }
+    // if (target.chainId != chains.arbitrum.id) {
+    //     return null
+    // }
+    if (source.chainId == chains.baseSepolia.id || target.chainId == chains.baseSepolia.id) {
         return null
     }
 
@@ -915,11 +269,23 @@ async function send(
     // Always block if the tx was marked as FAILED.
     // await waitForAllMessagesReceived(source.eid, sendTx.hash, 10_000)
 
-    const { status: msgStatus } = await myWaitForAllMessagesReceived(source.eid, sendTx.hash, 10_000)
+    const { messages: messagesForWaiting, status: msgStatus } = await myWaitForAllMessagesReceived(
+        source.eid,
+        sendTx.hash,
+        10_000
+    )
     if (msgStatus == MessageStatus.FAILED) {
         console.log(`Failed to send cross chain msg for unknown reason`)
         return null
     }
+    if (msgStatus == MessageStatus.INFLIGHT) {
+        console.log(
+            `Failed to wait for myWaitForAllMessagesReceived, messages: ${JSON.stringify(messagesForWaiting, null, ' ')}`
+        )
+        return null
+    }
+
+    // console.log(`wait for myWaitForAllMessagesReceived, messages: ${JSON.stringify(messagesForWaiting, null, ' ')}`)
     const sendTxReceipt = await sendTx.wait()
 
     const priceInUSD = getUsdPrice(source.chainId)
@@ -927,7 +293,9 @@ async function send(
     // const gasFee = sendTxReceipt.gasUsed.mul(ethers.BigNumber.from(sendTxReceipt.effectiveGasPrice))
     // const totalFee = ethers.utils.formatEther(ethers.BigNumber.from(nativeFee).add(gasFee))
     const { gasFee, totalFee } = calculateFees(sendTxReceipt.gasUsed, ethers.BigNumber.from(nativeFee), currGasPrice)
+    const gasFeeInUSD = getFeeInUSD(gasFee, priceInUSD)
     const totalFeeInUSD = getFeeInUSD(totalFee, priceInUSD)
+    const nativeFeeInUSD = getFeeInUSD(BigNumber.from(nativeFee), priceInUSD)
 
     const [minGasPrice, maxGasPrice] = getGasPriceRange(source.chainId)
     const { totalFee: minTotalFee } = calculateFees(
@@ -977,11 +345,16 @@ async function send(
         fromEid: source.eid,
         to: `${target.contractName}(${target.eid}:${target.contract.address})`,
         toEid: target.eid,
-        totalFee: `${ethers.utils.formatEther(totalFee)}(${totalFeeInUSD}$)`, // in ether
-        nativeFee: ethers.utils.formatEther(nativeFee), // in ether
+        totalFee: `${ethers.utils.formatEther(totalFee)} ETH`, // in ether
+        totalFeeInUSD: `$ ${totalFeeInUSD}`,
+        nativeFee: `${ethers.utils.formatEther(nativeFee)} ETH`, // in ether
+        nativeFeeInUSD: `$ ${nativeFeeInUSD}`, // in ether
         gasFee: ethers.utils.formatEther(gasFee), // in ether
-        minTotalFee: `${ethers.utils.formatEther(minTotalFee)}(${minTotalFeeInUSD})$`,
-        maxTotalFee: `${ethers.utils.formatEther(maxTotalFee)}(${maxTotalFeeInUSD})$`,
+        gasFeeInUSD: `$ ${gasFeeInUSD}`,
+        minTotalFee: `${ethers.utils.formatEther(minTotalFee)}`,
+        minTotalFeeInUSD: `$ ${minTotalFeeInUSD}`,
+        maxTotalFee: `${ethers.utils.formatEther(maxTotalFee)} ETH`,
+        maxTotalFeeInUSD: `$ ${maxTotalFeeInUSD}`,
         currGasPrice: `${ethers.utils.formatUnits(currGasPrice, 'gwei')}(gwei)`,
         minGasPrice: `${ethers.utils.formatUnits(minGasPrice, 'gwei')}(gwei)`,
         maxGasPrice: `${ethers.utils.formatUnits(maxGasPrice, 'gwei')}(gwei)`,
@@ -1004,27 +377,35 @@ async function sleep(delay: number) {
 async function myWaitForAllMessagesReceived(
     srcChainId: number,
     srcTxHash: string,
-    pollInterval?: number
+    pollInterval?: number,
+    timeout = 5 * 60 * 1000 // 5 minutes
 ): Promise<{ messages: Message[]; status: MessageStatus }> {
+    const startTime = Date.now()
     let status: MessageStatus = MessageStatus.INFLIGHT
     let messages: Message[]
     LOOPS: while (true) {
+        const elapsedTime = Date.now() - startTime
+        if (elapsedTime >= timeout) {
+            throw new Error('Waiting for layerzero execution timeout')
+        }
         try {
             const resp = await getMessagesBySrcTxHash(srcChainId, srcTxHash)
             messages = resp.messages
-            let deliveredCount = 0
-            for (const msg of messages) {
-                if (msg.status == MessageStatus.FAILED) {
-                    status = MessageStatus.FAILED
+            if (messages.length != 0) {
+                let deliveredCount = 0
+                for (const msg of messages) {
+                    if (msg.status == MessageStatus.FAILED) {
+                        status = MessageStatus.FAILED
+                        break LOOPS
+                    }
+                    if (msg.status == MessageStatus.DELIVERED) {
+                        deliveredCount++
+                    }
+                }
+                if (deliveredCount == messages.length) {
+                    status = MessageStatus.DELIVERED
                     break LOOPS
                 }
-                if (msg.status == MessageStatus.DELIVERED) {
-                    deliveredCount++
-                }
-            }
-            if (deliveredCount == messages.length) {
-                status = MessageStatus.DELIVERED
-                break LOOPS
             }
             // eslint-disable-next-line no-empty
         } catch {}

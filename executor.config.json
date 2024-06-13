@@ -1,0 +1,37 @@
+{
+ "chains": {
+  "5003": {
+   "name": "Mantle Sepolia Testnet",
+   "rpc": "https://rpc.sepolia.mantle.xyz",
+   "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+   "endpointView": "0x6B1fa2025127eE864223f1Ecc643ecA9a7c42984",
+   "trustedSendLib": "0x9A289B849b32FF69A95F8584a03343a33Ff6e5Fd",
+   "trustedReceiveLib": "0x8A3D588D9f6AC041476b094f97FF94ec30169d3D",
+   "trustedReceiveLibView": "0x6B1fa2025127eE864223f1Ecc643ecA9a7c42984",
+   "eid": 40246,
+   "executor": "0xA7BD5222b1881eFC2f0075a0e2600D5267562828"
+  },
+  "84532": {
+   "name": "Base Sepolia",
+   "rpc": "https://sepolia.base.org",
+   "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+   "endpointView": "0x62Ef3FDa852F4f0a5b6877229140f7511A9e982a",
+   "trustedSendLib": "0xC1868e054425D378095A003EcbA3823a5D0135C9",
+   "trustedReceiveLib": "0x12523de19dc41c91F7d2093E0CFbB76b17012C8d",
+   "trustedReceiveLibView": "0x62Ef3FDa852F4f0a5b6877229140f7511A9e982a",
+   "eid": 40245,
+   "executor": "0x1Bc2C691183cf2b08431324e3C3Cf34407bd328d"
+  },
+  "421614": {
+   "name": "Arbitrum Sepolia",
+   "rpc": "https://sepolia-rollup.arbitrum.io/rpc",
+   "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+   "endpointView": "0xAc7fd1AC0FFf72B592DB2b05856B4Da3ec34E08D",
+   "trustedSendLib": "0x4f7cd4DA19ABB31b0eC98b9066B9e857B1bf9C0E",
+   "trustedReceiveLib": "0x75Db67CDab2824970131D5aa9CECfC9F69c69636",
+   "trustedReceiveLibView": "0xAc7fd1AC0FFf72B592DB2b05856B4Da3ec34E08D",
+   "eid": 40231,
+   "executor": "0x62e54c706A5d26EB52B67541FfdE7A50BB080867"
+  }
+ }
+}

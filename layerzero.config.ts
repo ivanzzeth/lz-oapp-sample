@@ -69,20 +69,30 @@ const testnetConnections: OmniEdgeHardhat<OAppEdgeConfig | undefined>[] = [
     {
         from: arbitrumSepoliaContract,
         to: mantleSepoliaContract,
-    },
-    {
-        from: arbitrumSepoliaContract,
-        to: baseSepoliaContract,
         // config: {
-        //     receiveLibraryConfig: {
-        //         receiveLibrary: '0x75Db67CDab2824970131D5aa9CECfC9F69c69636',
-        //         gracePeriod: BigInt(0),
+        //     sendConfig: {
+        //         executorConfig: {
+        //             maxMessageSize: 1000,
+        //             executor: '0x65e863aE8e471fe3f8DF4779771E8D23A58eEEA1',
+        //         },
         //     },
         // },
     },
     {
+        from: arbitrumSepoliaContract,
+        to: baseSepoliaContract,
+    },
+    {
         from: mantleSepoliaContract,
         to: arbitrumSepoliaContract,
+        // config: {
+        //     sendConfig: {
+        //         executorConfig: {
+        //             maxMessageSize: 1000,
+        //             executor: '0xe98aC27F25b801570feB0168688fA96Ede62AE0A',
+        //         },
+        //     },
+        // },
     },
     {
         from: mantleSepoliaContract,
@@ -238,10 +248,10 @@ const mainnetConnections: OmniEdgeHardhat<OAppEdgeConfig | undefined>[] = [
 ]
 
 const config: OAppOmniGraphHardhat = {
-    // contracts: [...testnetContracts],
-    // connections: [...testnetConnections],
-    contracts: [...mainnetContracts],
-    connections: [...mainnetConnections],
+    contracts: [...testnetContracts],
+    connections: [...testnetConnections],
+    // contracts: [...mainnetContracts],
+    // connections: [...mainnetConnections],
 }
 
 export default config

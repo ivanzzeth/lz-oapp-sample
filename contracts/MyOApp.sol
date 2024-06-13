@@ -5,9 +5,22 @@ pragma solidity ^0.8.22;
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { OApp, MessagingFee, Origin } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OApp.sol";
 import { MessagingReceipt } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppSender.sol";
+import {SetConfigParam} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
+import {UlnConfig, ExecutorConfig} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/uln302/SendUln302.sol";
 
 contract MyOApp is OApp {
-    constructor(address _endpoint, address _delegate) OApp(_endpoint, _delegate) Ownable(_delegate) {}
+    address public immutable dvn; // this would never be immutable in a real app
+    address public immutable executor; // this would never be immutable in a real app
+
+    constructor(
+        address _endpoint,
+        address _executor,
+        address _dvn,
+        address _delegate
+    ) OApp(_endpoint, _delegate) {
+        executor = _executor;
+        dvn = _dvn;
+    }
 
     string public data = "Nothing received yet.";
 
@@ -66,5 +79,52 @@ contract MyOApp is OApp {
         bytes calldata /*_extraData*/
     ) internal override {
         data = abi.decode(payload, (string));
+    }
+
+    function setPeer(uint32 _eid, bytes32 _peer) public override onlyOwner {
+        // @note onlyOwner redundant here but kept for explicitness
+        // dvn + executor config would never be fixed like this in a real app.
+        (address receiveLib, ) = endpoint.getReceiveLibrary(
+            address(this),
+            _eid
+        );
+        address sendLib = endpoint.getSendLibrary(address(this), _eid);
+
+        address[] memory requiredDVNs = new address[](1);
+        requiredDVNs[0] = dvn;
+
+        UlnConfig memory ulnConfig = UlnConfig({
+            confirmations: 1,
+            requiredDVNCount: 1,
+            optionalDVNCount: 0,
+            optionalDVNThreshold: 0,
+            requiredDVNs: requiredDVNs,
+            optionalDVNs: new address[](0)
+        });
+
+        ExecutorConfig memory executorConfig = ExecutorConfig({
+            maxMessageSize: 1024, // Not important for this example
+            executor: executor
+        });
+
+        SetConfigParam[] memory sendConfigs = new SetConfigParam[](2);
+        sendConfigs[0] = SetConfigParam({
+            eid: _eid,
+            configType: 2, // CONFIG_TYPE_ULN
+            config: abi.encode(ulnConfig)
+        });
+        sendConfigs[1] = SetConfigParam({
+            eid: _eid,
+            configType: 1, // CONFIG_TYPE_EXECUTOR
+            config: abi.encode(executorConfig)
+        });
+
+        SetConfigParam[] memory receiveConfigs = new SetConfigParam[](1);
+        receiveConfigs[0] = sendConfigs[0];
+
+        endpoint.setConfig(address(this), receiveLib, receiveConfigs);
+        endpoint.setConfig(address(this), sendLib, sendConfigs);
+
+        super.setPeer(_eid, _peer);
     }
 }
